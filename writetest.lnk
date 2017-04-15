@@ -1,0 +1,4 @@
+FROM LIB:c.o "writetest.o"
+TO "writetest"
+LIB LIB:sc.lib LIB:amiga.lib
+
