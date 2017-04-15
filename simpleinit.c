@@ -39,7 +39,7 @@ void main() {
 	AddViewPort(100, 31, 3, CharacterPaletteRGB4);
 	AddViewPort(30, 132, 1, color_table_3);
 
-	// LoadImage(tree.img)
+	LoadPBM("tree.pbm");
 	
 
 	CleanDrawImage(&(global_screen.view_port_list->next->rast_port), &Character, x, y);

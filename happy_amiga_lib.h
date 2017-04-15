@@ -1,6 +1,8 @@
 #include <intuition/intuition.h>
+#include <libraries/dos.h>
 #include <graphics/gfxbase.h>
 #include <graphics/gfxmacros.h>
+#include <graphics/sprite.h>
 #include <exec/types.h>
 #include <hardware/custom.h>
 #include <hardware/cia.h>
@@ -44,11 +46,23 @@ struct Screen_data {
   	bool initiated;
 };
 
+// Sprite struct already exists and has all of this stuff. List might also be unnecessary?
+/*struct Sprite_data {
+	UWORD image_data*;
+	int posX;
+	int posY;
+}
+struct SpriteList {
+	struct SimpleSprite this_sprite;
+	struct SpriteList* next;
+};*/
+
 int loop;
 UWORD *pointer;
 struct ViewPortList* viewporttraverse;
 struct ViewPortList* freeviewport;
 
+void LoadPBM();
 void CleanDrawImage();
 void InitLibraries();
 struct ViewPortList* CreateVoidPort();
@@ -60,8 +74,39 @@ UBYTE Joystick();
 
 struct Screen_data global_screen;
 
+struct FileHandle* filehandle;
+char* data;
+long bytes_read;
+int file_value;
+
+void LoadPBM(char* filename) {
+	//TODO Open File
+	filehandle = Open( filename, MODE_OLDFILE );
+	if (filehandle == NULL) {
+		char errormsg[40] = "Could not open file ";
+		strcat(errormsg, filename);
+		strcat(errormsg, "!");
+		CleanUp(errormsg);
+	}
+	//TODO Get Bytestream
+	for (loop = 0; loop < 20; loop++) {
+		bytes_read = Read( filehandle, &data, sizeof(char)*2);
+		file_value = strtol(data, NULL, 10);
+		printf("Bytes read: %d, Content: %d\n", bytes_read, data);
+		bytes_read = Read( filehandle, &data, sizeof(char)); // skip the whitespace
+	}
+	//TODO read first bytes for magic number, height, width, depth
+	//TODO prepare memory with this info
+	//TODO read graphics data from file into this memory
+	//TODO give it back
+	
+	Close( filehandle );
+	//Hopefully that's all and the data is already formated correctly
+}
+
 void CleanDrawImage( struct RastPort* rastport, struct Image* image, int imagex, int imagey) {
 	//BltClear(rastport->BitMap, RASSIZE(image->Width, image->Height), 0);
+	//TODO Clear Rastport where the image was before
 	DrawImage(rastport, image, imagex, imagey);
 }
 
