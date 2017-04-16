@@ -4,6 +4,7 @@
 #include <graphics/gfxmacros.h>
 #include <graphics/sprite.h>
 #include <exec/types.h>
+#include <exec/memory.h>
 #include <hardware/custom.h>
 #include <hardware/cia.h>
 
@@ -62,7 +63,7 @@ UWORD *pointer;
 struct ViewPortList* viewporttraverse;
 struct ViewPortList* freeviewport;
 
-void LoadPBM();
+struct Image* LoadPBM();
 void CleanDrawImage();
 void InitLibraries();
 struct ViewPortList* CreateVoidPort();
@@ -75,12 +76,23 @@ UBYTE Joystick();
 struct Screen_data global_screen;
 
 struct FileHandle* filehandle;
-char* data;
 long bytes_read;
-int file_value;
+CPTR imagecontent;
+int arraysize;
 
-void LoadPBM(char* filename) {
-	//TODO Open File
+struct Image* LoadPBM(char* filename) {
+	// Prepare struct
+	struct Image newimage;
+	char fp[5];
+	CPTR contentpointer;
+
+	newimage.LeftEdge = 0;
+	newimage.TopEdge = 0;
+	newimage.NextImage = NULL;
+	newimage.PlanePick = 0x0007;
+	newimage.PlaneOnOff = 0x0000;
+
+	// Open File
 	filehandle = Open( filename, MODE_OLDFILE );
 	if (filehandle == NULL) {
 		char errormsg[40] = "Could not open file ";
@@ -88,20 +100,42 @@ void LoadPBM(char* filename) {
 		strcat(errormsg, "!");
 		CleanUp(errormsg);
 	}
-	//TODO Get Bytestream
-	for (loop = 0; loop < 20; loop++) {
-		bytes_read = Read( filehandle, &data, sizeof(char)*2);
-		file_value = strtol(data, NULL, 10);
-		printf("Bytes read: %d, Content: %d\n", bytes_read, data);
-		bytes_read = Read( filehandle, &data, sizeof(char)); // skip the whitespace
-	}
-	//TODO read first bytes for magic number, height, width, depth
-	//TODO prepare memory with this info
-	//TODO read graphics data from file into this memory
-	//TODO give it back
+	printf("Loaded file %s...", filename);
+
+	//read first bytes height, width, depth, size
 	
+	bytes_read = Read( filehandle, fp, sizeof(char)*2);
+	newimage.Width = strtol( fp, NULL, 10);
+	bytes_read = Read( filehandle, fp, sizeof(char)*2);
+	newimage.Height = strtol( fp, NULL, 10);
+	bytes_read = Read( filehandle, fp, sizeof(char));
+	//newimage.Depth = strtol( fp, NULL, 10);
+	newimage.Depth = 3; //TODO FIX DEPTH
+	bytes_read = Read( filehandle, fp, sizeof(char)*3);
+	arraysize = strtol( fp, NULL, 10);
+	printf("Image Width: %d, Height: %d, Depth: %d, Arraysize: %d\n", newimage.Width, newimage.Height, newimage.Depth, arraysize);
+
+	// prepare memory with this info
+	
+	//imagecontent = malloc(sizeof(UWORD)*arraysize);
+	imagecontent = (CPTR) AllocMem( sizeof(UWORD)*arraysize, MEMF_CHIP);
+	if (imagecontent == NULL)
+		CleanUp( "Could not allocate memory for loading image!" );
+
+	// read graphics data from file into this memory
+	contentpointer = imagecontent;
+	for(loop = 0; loop < arraysize; loop++) {
+		Read(filehandle, fp, sizeof(char)*4);
+		contentpointer* = strtol( fp, NULL, 16);
+		contentpointer++;
+	}
+	// Loading is done
 	Close( filehandle );
-	//Hopefully that's all and the data is already formated correctly
+
+	// Finish struct
+	newimage.ImageData = imagecontent;
+	// return Image struct
+	return &newimage;
 }
 
 void CleanDrawImage( struct RastPort* rastport, struct Image* image, int imagex, int imagey) {
@@ -251,6 +285,8 @@ void UpdateView() {
 void CleanUp( char* message ) {
   // Restore old view
   LoadView( global_screen.old_view );
+
+  FreeMem(imagecontent, sizeof(UWORD)*arraysize); //TODO UNSAFE CODE, arraysize changes when loading a new image!
 
   /* Free automatically allocated display structures: */
   viewporttraverse = global_screen.view_port_list;
